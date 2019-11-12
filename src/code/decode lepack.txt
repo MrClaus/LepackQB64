@@ -1,0 +1,151 @@
+_TITLE "Starting decode lepack-file"
+$CHECKING:OFF
+$SCREENHIDE
+
+
+' назъбкемхе оепелеммшу, гю хяйкчвемхел люяяхбнб, йнрнпше асдср назъбкърэяъ он леярс менаундхлнярх б йнде
+DIM file AS STRING
+DIM new_app AS STRING
+DIM ST AS STRING
+DIM name_directory AS STRING
+DIM i AS INTEGER
+DIM j AS INTEGER
+DIM spl AS INTEGER
+DIM post_slash AS INTEGER
+DIM summer_base64 AS _INTEGER64
+DIM T AS _INTEGER64
+DIM n AS _INTEGER64
+DIM size_pack AS _INTEGER64
+DIM read_size_build AS _INTEGER64
+DIM sum_folders AS _INTEGER64
+DIM sum_files AS _INTEGER64
+DIM summer_byt AS _INTEGER64
+DIM k AS _INTEGER64
+
+
+' опнбепъел, ясыеярбсер кх сйюгюммюъ оюойю, еякх мер - янгдюел е╗, х дюкее - опхябюхбюел еи юрпхаср - яйпшрши
+IF _DIREXISTS("Repacked") = 0 THEN MKDIR "Repacked"
+'SHELL _HIDE "attrib +h .\Repacked"
+
+
+' опнбепъел, оепедюмн кх опнцпюлле йнлюмдмне гмювемхе, еякх дю - опнбепъел пюяьхпемхе оепедюбюелнцн тюикю, б опнрхбмнл яксвюе - бшунд хг опнцпюллш
+file = COMMAND$
+IF file = "" THEN END
+i = 0
+WHILE MID$(file, LEN(file) - i, 1) <> "."
+    i = i + 1
+WEND
+IF RIGHT$(file, i) <> "lepack" THEN END
+j = i + 1
+WHILE MID$(file, LEN(file) - j, 1) <> "\"
+    j = j + 1
+WEND
+new_app = MID$(file, LEN(file) - j + 1, j - i - 1)
+
+
+' опнбепъел, ясыеярбсер кх сфе рюйюъ оюойю б дхпейрнпхх пюяоюйнбйх, еякх дю - рн бшунд хг опнцпюллш, еякх мер - янгдюеряъ менаундхлюъ оюойю дкъ хгбкевемхъ тюикнб юпухбю
+IF _DIREXISTS("Repacked\" + new_app) <> 0 THEN END
+MKDIR "Repacked\" + new_app
+
+
+' опнжеяя пюяьхтпнбйх гюьхтпнбюммнцн LEPACK-тюикю б мегюьхтпнбюммши ZGIFO-оюй-тюик
+SHELL _HIDE "certutil -encode " + CHR$(34) + file + CHR$(34) + " " + CHR$(34) + ".\Repacked\" + new_app + "\" + new_app + ".xgifo" + CHR$(34)
+OPEN "Repacked\" + new_app + "\" + new_app + ".xgifo" FOR BINARY AS #7
+summer_base64 = LOF(7)
+REDIM ARR_ORG(summer_base64) AS _UNSIGNED _BYTE
+GET #7, , ARR_ORG()
+CLOSE #7
+KILL "Repacked\" + new_app + "\" + new_app + ".xgifo"
+REDIM ARR_NEW(summer_base64 - 59) AS _UNSIGNED _BYTE
+REDIM ARR_INVERT(summer_base64 - 59) AS _UNSIGNED _BYTE
+FOR T = 29 TO summer_base64 - 30
+    ARR_NEW(T - 29) = ARR_ORG(T)
+NEXT
+n = 1
+FOR T = 0 TO summer_base64 - 59
+    ARR_INVERT(summer_base64 - 59 - T) = ARR_NEW(T)
+    IF T + 1 = 64 * n + 2 * (n - 1) THEN
+        n = n + 1
+        ARR_INVERT(summer_base64 - 59 - (T + 1)) = ARR_NEW(T + 2)
+        ARR_INVERT(summer_base64 - 59 - (T + 2)) = ARR_NEW(T + 1)
+        T = T + 2
+    END IF
+NEXT T
+OPEN "Repacked\" + new_app + "\" + new_app + ".ygifo" FOR BINARY AS #7
+PUT #7, , ARR_INVERT()
+CLOSE #7
+SHELL _HIDE "certutil -decode " + CHR$(34) + ".\Repacked\" + new_app + "\" + new_app + ".ygifo" + CHR$(34) + " " + CHR$(34) + ".\Repacked\" + new_app + "\" + new_app + ".zgifo" + CHR$(34)
+KILL "Repacked\" + new_app + "\" + new_app + ".ygifo"
+
+
+' хгбкевемхе хг ZGIFO-тюикю кнцю н яндепфюыхуяъ б мел тюикнб х оюонй
+file = "Repacked\" + new_app + "\" + new_app + ".zgifo"
+OPEN file FOR INPUT AS #1
+size_pack = LOF(1)
+LINE INPUT #1, ST
+CLOSE #1
+spl = LEN(ST)
+WHILE MID$(ST, spl, 1) <> "/"
+    spl = spl - 1
+WEND
+read_size_build = VAL(RIGHT$(ST, LEN(ST) - spl))
+DIM info(read_size_build) AS _UNSIGNED _BYTE
+OPEN file FOR BINARY AS #1
+GET #1, , info()
+CLOSE #1
+OPEN "Repacked\" + new_app + "\build log.make" FOR BINARY AS #1
+PUT #1, , info()
+CLOSE #1
+
+
+' он кнцс янярюбкъеряъ люяяхб мюхлемнбюмхи тюикнб х оюонй дкъ дюкэмеиьецн ху хгбкевемхъ хг ZGIFO-тюикю
+OPEN "Repacked\" + new_app + "\build log.make" FOR INPUT AS #1
+LINE INPUT #1, ST
+IF LEFT$(ST, 51) <> "Gifo packing file for Mobyx Application [*.ZGIFO] /" THEN END
+LINE INPUT #1, ST
+name_directory = RIGHT$(ST, LEN(ST) - 11)
+LINE INPUT #1, ST
+sum_folders = VAL(RIGHT$(ST, LEN(ST) - 6))
+DIM folders$(sum_folders)
+FOR T = 0 TO sum_folders - 1
+    LINE INPUT #1, ST
+    folders$(T) = MID$(ST, 7, LEN(ST) - 7)
+NEXT T
+LINE INPUT #1, ST
+sum_files = VAL(RIGHT$(ST, LEN(ST) - 6))
+DIM files$(sum_files)
+DIM size_files(sum_files) AS _INTEGER64
+FOR T = 0 TO sum_files - 1
+    LINE INPUT #1, ST
+    post_slash = INSTR(ST, "|")
+    files$(T) = MID$(ST, 7, post_slash - 7)
+    size_files(T) = VAL(RIGHT$(ST, LEN(ST) - post_slash))
+NEXT T
+CLOSE #1
+
+
+' опнжеяя янгдюмхъ менаундхлнцн йюрюкнцю х хгбкевемхъ тюикнб б дхпейрнпхч пюяоюйнбйх
+DIM build_array(size_pack) AS _UNSIGNED _BYTE
+OPEN file FOR BINARY AS #1
+GET #1, , build_array()
+CLOSE #1
+FOR T = 0 TO sum_folders - 1
+    MKDIR "Repacked\" + new_app + "\" + folders$(T)
+NEXT T
+summer_byt = read_size_build
+FOR T = 0 TO sum_files - 1
+    PRINT T
+    REDIM data_array(size_files(T)) AS _UNSIGNED _BYTE
+    FOR k = summer_byt TO summer_byt + size_files(T) - 1
+        data_array(k - summer_byt) = build_array(k)
+    NEXT k
+    OPEN "Repacked\" + new_app + "\" + files$(T) FOR BINARY AS #1
+    PUT #1, , data_array()
+    CLOSE #1
+    summer_byt = summer_byt + size_files(T)
+NEXT T
+
+
+' гюбепьемхе опнжеяяю пюяоюйнбйх х опнцпюллш
+KILL "Repacked\" + new_app + "\" + new_app + ".zgifo"
+END

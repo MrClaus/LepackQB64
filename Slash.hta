@@ -1,0 +1,40 @@
+<html>
+
+<head>
+	<title> MobyxL manager starting... </title>
+
+	<style>
+		body {margin: 0px; padding: 0px; border-width: 0px; overflow: hidden;}
+	</style>
+
+	<hta:application id = hta_id
+	applicationName = "MobyxL manager starting..."
+	showInTaskBar = no
+	caption = no
+	singleinstance = yes
+	selection = no
+	scroll = no
+	border = none
+	contextmenu = no />
+
+	<script language = javascript>
+		// Задаётся ширина и высота заставки
+		var winWidth = 300;
+		var winHeight = 200;
+		window.resizeTo(winWidth, winHeight);
+
+		// Задаётся позиция окна в центр экрана
+		var winPosX = screen.width/2 - winWidth/2;
+		var winPosY = screen.height/2 - winHeight/2;
+		window.moveTo(winPosX, winPosY);
+	</script>
+</head>
+
+<body>
+	<img src = "slash/slash.bmp"	
+	width = "300" 
+	height = "200"
+	alt = "LEPack files starting..." />
+</body>
+
+</html>

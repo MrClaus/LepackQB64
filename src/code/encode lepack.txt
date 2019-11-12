@@ -1,0 +1,221 @@
+_TITLE "#Packing/Encode directory [*.LEPACK]"
+
+
+' ÎÁÚßÂËÅÍÈÅ ÏÅÐÅÌÅÍÍÛÕ, ÇÀ ÈÑÊËÞ×ÅÍÈÅÌ ÌÀÑÑÈÂÎÂ, ÊÎÒÎÐÛÅ ÁÓÄÓÒ ÎÁÚßÂËßÒÜÑß ÏÎ ÌÅÑÒÓ ÍÅÎÁÕÎÄÈÌÎÑÒÈ Â ÊÎÄÅ
+DIM ST AS STRING
+DIM STP AS STRING
+DIM new_build AS STRING
+DIM check AS STRING
+DIM more_str AS STRING
+DIM this_file_for AS STRING
+DIM i AS INTEGER
+DIM post_folder AS INTEGER
+DIM post_file AS INTEGER
+DIM post_size AS INTEGER
+DIM etap AS INTEGER
+DIM in_str AS INTEGER
+DIM T AS _INTEGER64
+DIM n AS _INTEGER64
+DIM poly_size AS _INTEGER64
+DIM new_size AS _INTEGER64
+DIM new_byt AS _INTEGER64
+DIM i_build AS _INTEGER64
+DIM SUM_FILES AS _INTEGER64
+DIM SUM_FOLDERS AS _INTEGER64
+DIM size_build AS _INTEGER64
+DIM size_file_for AS _INTEGER64
+DIM sum_size_file AS _INTEGER64
+DIM summer_base64 AS _INTEGER64
+DIM i_byt AS _UNSIGNED _BYTE
+
+
+' ÏÐÎÂÅÐßÅÌ, ÑÓÙÅÑÒÂÓÅÒ ËÈ ÓÊÀÇÀÍÍÀß ÏÀÏÊÀ, ÅÑËÈ ÍÅÒ - ÑÎÇÄÀÅÌ Å¨, È ÄÀËÅÅ - ÏÐÈÑÂÀÈÂÀÅÌ ÅÉ ÀÒÐÈÁÓÒ - ÑÊÐÛÒÛÉ
+IF _DIREXISTS("Building") = 0 THEN
+    MKDIR "Building"
+END IF
+SHELL _HIDE "attrib +h .\Building"
+
+
+' Ñ×ÈÒÛÂÀÅÌ ÏÓÒÜ Ê ÒÅÊÓÙÅÌÓ ÊÀÒÀËÎÃÓ ÈÇ ÊÎÌÀÍÄÍÎÉ ÑÒÐÎÊÈ
+PRINT "> Start build project:"
+STP = COMMAND$
+
+
+' ÏÐÎÂÅÐßÅÌ, ÑÓÙÅÑÒÂÓÅÒ ËÈ ÒÀÊÎÉ ÏÓÒÜ, ÅÑËÈ ÍÅÒ - ÂÛÂÎÄÈÌ ÎØÈÁÊÓ, ÅÑËÈ ÄÀ - Ñ×ÈÒÛÂÀÅÌ ÈÌß ÊÀÒÀËÎÃÀ ÈÇ ÏÓÒÈ 'new_build'
+IF _DIREXISTS(STP) = 0 OR STP = "" THEN
+    PRINT "> Error: no correct project name!"
+    SLEEP
+    _SCREENHIDE
+    END
+END IF
+PRINT "> Open directory: '" + STP + "'"
+i = 0
+WHILE MID$(STP, LEN(STP) - i, 1) <> "\"
+    i = i + 1
+WEND
+new_build = RIGHT$(STP, i)
+PRINT ">     this is project name: '" + new_build + "'"
+
+
+' ÏÐÎÂÅÐßÅÌ ÍÀ ÍÀËÈ×ÈÅ Â ÊÀÒÀËÎÃÅ ÍÅÇÀÒ¨ÐÒÛÕ ÔÀÉËÎÂ Ñ ÏÐÎØËÎÃÎ ØÈÔÐÎÂÀÍÈß, ÅÑËÈ ÎÍÈ ÅÑÒÜ - ÓÄÀËßÅÌ
+PRINT ">     create log file for project: 'Build project.make'"
+IF _FILEEXISTS(STP + "\Build project.make") <> 0 THEN KILL STP + "\Build project.make"
+IF _FILEEXISTS(STP + "\" + new_build + ".lepack") <> 0 THEN KILL STP + "\" + new_build + ".lepack"
+
+
+' Â ÑÈÑÒÅÌÍÎÉ ÏÀÏÊÅ ÑÎÇÄÀÅÌ ÏÀÏÊÓ Ñ ÈÌÅÍÅÌ ÒÅÊÓÙÅÃÎ ÊÀÒÀËÎÃÀ ÄËß ÏÐÎÌÅÆÓÒÎ×ÍÛÕ ÎÏÅÐÀÖÈÉ ÏÎ ÑÁÎÐÊÅ
+MKDIR "Building\" + new_build
+
+
+' ÄÀËÅÅ Â ÊÎÄÅ ÑÎÇÄÀÅÒÑß ÁÀÒ-ÔÀÉË, ÊÎÒÎÐÛÉ ÑÎÑÒÀÂËßÅÒ ÑÏÈÑÎÊ ÔÀÉËÎÂ È ÏÀÏÎÊ ÒÅÊÓÙÅÃÎ ÊÀÒÀËÎÃÀ (È ÇÀÏÓÑÊÀÅÌ ÅÃÎ)
+OPEN "Building\" + new_build + "\field.bat" FOR OUTPUT AS #1
+PRINT #1, "chcp 1251 >nul"
+PRINT #1, "forfiles /P " + CHR$(34) + STP + CHR$(34) + " /M * /S /C " + CHR$(34) + "cmd /c echo @relpath @fsize @isdir" + CHR$(34) + " >> " + CHR$(34) + "Building\" + new_build + "\build files project.dat" + CHR$(34)
+CLOSE #1
+SHELL _HIDE "Building\" + new_build + "\field.bat"
+
+
+' ÑÎÑÒÀÂËÅÍÍÛÉ ÑÏÈÑÎÊ ÔÀÉËÎÂ È ÏÀÏÎÊ ÑÎÐÒÈÐÓÅÒÑß ÎÒÄÅËÜÍÎ ÍÀ ÌÀÑÑÈÂ ÔÀÉËÎÂ È ÌÀÑÑÈÂ ÏÀÏÎÊ, ÄËß ÏÎÑËÅÄÓÞÙÈÕ ÎÏÅÐÀÖÈÉ Ñ ÈÑÏÎËÜÇÎÂÀÍÈÅÌ ÄÀÍÍÛÕ ÌÀÑÑÈÂÎÂ
+OPEN "Building\" + new_build + "\build files project.dat" FOR INPUT AS #1
+SUM_FILES = 0
+SUM_FOLDERS = 0
+REDIM name_folders(1) AS STRING
+REDIM name_files(1) AS STRING
+REDIM copy_name_files(1) AS STRING
+WHILE NOT EOF(1)
+    LINE INPUT #1, ST
+    check = RIGHT$(ST, 4)
+    IF check = "TRUE" THEN
+        post_folder = INSTR(2, ST, CHR$(34))
+        name_folders(SUM_FOLDERS) = MID$(ST, 4, post_folder - 4)
+        SUM_FOLDERS = SUM_FOLDERS + 1
+        REDIM _PRESERVE name_folders(0 TO SUM_FOLDERS + 1)
+    END IF
+    IF check = "ALSE" THEN
+        post_file = INSTR(2, ST, CHR$(34))
+        name_files(SUM_FILES) = MID$(ST, 4, post_file - 4) + "|"
+        post_size = INSTR(post_file, ST, "F")
+        name_files(SUM_FILES) = name_files(SUM_FILES) + MID$(ST, post_file + 2, post_size - post_file - 3)
+        copy_name_files(SUM_FILES) = name_files(SUM_FILES)
+        SUM_FILES = SUM_FILES + 1
+        REDIM _PRESERVE name_files(0 TO SUM_FILES + 1)
+        REDIM _PRESERVE copy_name_files(0 TO SUM_FILES + 1)
+    END IF
+WEND
+CLOSE #1
+
+
+' ÑÎÑÒÀÂËßÅÒÑß 'Build project.make' Â ÒÅÊÓÙÅÌ ÊÀÒÀËÎÃÅ, Ñ ÈÍÔÎÐÌÀÖÈÅÉ Î ÔÀÉËÀÕ È ÏÀÏÊÀÕ ÏÐÎÅÊÒÀ, À ÒÀÊÆÅ ÈÍÔÎÐÌÀÖÈÅÉ Î ÑÅÁÅ Â ÏÅÐÂÎÉ ÑÒÐÎÊÅ, ÊÎÒÎÐÀß ÁÓÄÅÒ ÍÅÎÁÕÎÄÈÌÀ ÏÐÈ ÐÀÑÏÀÊÎÂÊÅ GIFO-ÔÀÉËÀ
+more_str = ""
+etap = 1: GOTO build_make
+etap_1: OPEN STP + "\Build project.make" FOR BINARY AS #1
+size_build = LOF(1)
+size_build = size_build + LEN(STR$(size_build)) - 1
+more_str = RIGHT$(STR$(size_build), LEN(STR$(size_build)) - 1)
+CLOSE #1
+etap = 2: GOTO build_make
+etap_2: SUM_FILES = SUM_FILES + 1
+REDIM _PRESERVE name_files(0 TO SUM_FILES)
+name_files(0) = "Build project.make" + "|" + more_str
+FOR T = 1 TO SUM_FILES - 1
+    name_files(T) = copy_name_files(T - 1)
+NEXT
+
+
+' ÑÎÇÄÀÅÒÑß ÍÅÇÀØÈÔÐÎÂÀÍÍÛÉ ÏÀÊ ÔÀÉËÎÂ (*.ZGIFO)
+PRINT ">     the process of packaging the project files"
+PRINT ">     processing ..."
+sum_size_file = 0
+REDIM data_of_file(1) AS _UNSIGNED _BYTE
+FOR T = 0 TO SUM_FILES - 1
+    in_str = INSTR(name_files(T), "|")
+    this_file_for = LEFT$(name_files(T), in_str - 1)
+    size_file_for = VAL(RIGHT$(name_files(T), LEN(name_files(T)) - in_str))
+    REDIM _PRESERVE data_of_file(0 TO sum_size_file + size_file_for)
+    REDIM array(size_file_for) AS _UNSIGNED _BYTE
+    OPEN STP + "\" + this_file_for FOR BINARY AS #1
+    GET #1, , array()
+    CLOSE #1
+    FOR i_build = sum_size_file TO sum_size_file + size_file_for - 1
+        data_of_file(i_build) = array(i_build - sum_size_file)
+    NEXT
+    sum_size_file = sum_size_file + size_file_for
+NEXT T
+OPEN "Building\" + new_build + "\" + new_build + ".zgifo" FOR BINARY AS #1
+PUT #1, , data_of_file()
+CLOSE #1
+
+
+' ÐÀÑ×ÈÒÛÂÀÅÒÑß ÂÅÑ ÑÎÇÄÀÍÍÎÃÎ ZGIFO-ÔÀÉËÀ ÄËß ÂÎÇÌÎÆÍÎÉ ÅÃÎ ÊÎÐÐÅÊÒÈÐÎÂÊÈ, ÍÅÎÁÕÎÄÈÌÎÉ ÄËß ÄÀËÜÍÅÉØÅÃÎ ØÈÔÐÎÂÀÍÈß
+PRINT "> Encoding project:"
+OPEN "Building\" + new_build + "\" + new_build + ".zgifo" FOR BINARY AS #1
+poly_size = LOF(1) * 8
+new_size = poly_size
+WHILE new_size / 6 <> new_size \ 6
+    new_size = new_size + 8
+WEND
+new_byt = (new_size - poly_size) / 8
+IF new_byt = 0 THEN GOTO goto_crypt
+FOR T = 1 TO new_byt
+    PUT #1, poly_size / 8 + T, i_byt
+NEXT T
+goto_crypt: CLOSE #1
+
+
+' ÏÐÎÖÅÑÑ ØÈÔÐÎÂÀÍÈß ÑÎÇÄÀÍÍÎÃÎ ZGIFO-ÔÀÉËÀ, ÄËß ÄÀËÜÍÅÉØÅÃÎ ÏÎËÓ×ÅÍÈß ÍÀ ÂÛÕÎÄÅ ÇÀØÈÔÐÎÂÀÍÍÎÃÎ LEPACK-ÔÀÉËÀ ÓÆÅ Â ÒÅÊÓÙÅÌ ÊÀÒÀËÎÃÅ
+PRINT ">     the establishment of an Executive lepack-file: '" + new_build + ".lepack'"
+PRINT ">     processing ..."
+SHELL _HIDE "certutil -encode " + CHR$(34) + ".\Building\" + new_build + "\" + new_build + ".zgifo" + CHR$(34) + " " + CHR$(34) + ".\Building\" + new_build + "\" + new_build + ".ygifo" + CHR$(34)
+OPEN "Building\" + new_build + "\" + new_build + ".ygifo" FOR BINARY AS #7
+summer_base64 = LOF(7)
+REDIM ARR_ORG(summer_base64) AS _UNSIGNED _BYTE
+GET #7, , ARR_ORG()
+CLOSE #7
+KILL "Building\" + new_build + "\" + new_build + ".zgifo"
+KILL "Building\" + new_build + "\" + new_build + ".ygifo"
+REDIM ARR_NEW(summer_base64 - 59) AS _UNSIGNED _BYTE
+REDIM ARR_INVERT(summer_base64 - 59) AS _UNSIGNED _BYTE
+FOR T = 29 TO summer_base64 - 30
+    ARR_NEW(T - 29) = ARR_ORG(T)
+NEXT
+n = 1
+FOR T = 0 TO summer_base64 - 59
+    ARR_INVERT(summer_base64 - 59 - T) = ARR_NEW(T)
+    IF T + 1 = 64 * n + 2 * (n - 1) THEN
+        n = n + 1
+        ARR_INVERT(summer_base64 - 59 - (T + 1)) = ARR_NEW(T + 2)
+        ARR_INVERT(summer_base64 - 59 - (T + 2)) = ARR_NEW(T + 1)
+        T = T + 2
+    END IF
+NEXT T
+OPEN "Building\" + new_build + "\" + new_build + ".xgifo" FOR BINARY AS #7
+PUT #7, , ARR_INVERT()
+CLOSE #7
+SHELL _HIDE "certutil -decode " + CHR$(34) + ".\Building\" + new_build + "\" + new_build + ".xgifo" + CHR$(34) + " " + CHR$(34) + STP + "\" + new_build + ".lepack" + CHR$(34)
+
+
+' ÇÀÂÅÐØÅÍÈÅ ÏÐÎÖÅÑÑÀ ÑÁÎÐÊÈ ÀÐÕÈÂÀ, ÓÄÀËÅÍÈÅ ÏÐÎÌÅÆÓÒÎ×ÍÛÕ ÔÀÉËÎÂ È ÏÀÏÎÊ
+PRINT "> Building is completed!"
+KILL "Building\" + new_build + "\" + new_build + ".xgifo"
+KILL "Building\" + new_build + "\field.bat"
+KILL "Building\" + new_build + "\build files project.dat"
+RMDIR "Building\" + new_build + "\"
+_SCREENHIDE
+END
+
+
+build_make: OPEN STP + "\Build project.make" FOR OUTPUT AS #1
+PRINT #1, "Gifo packing file for Mobyx Application [*.ZGIFO] /" + more_str
+PRINT #1, "Directory: " + new_build
+PRINT #1, "Path:" + STR$(SUM_FOLDERS)
+FOR T = 0 TO SUM_FOLDERS - 1
+    PRINT #1, "    > " + name_folders(T) + "\"
+NEXT T
+PRINT #1, "File:" + STR$(SUM_FILES)
+FOR T = 0 TO SUM_FILES - 1
+    PRINT #1, "    > " + name_files(T)
+NEXT T
+PRINT #1, "End."
+CLOSE #1
+IF etap = 1 THEN GOTO etap_1
+IF etap = 2 THEN GOTO etap_2

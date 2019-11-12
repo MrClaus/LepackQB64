@@ -1,0 +1,307 @@
+SCREEN _NEWIMAGE(400, 240, 32)
+desktop& = _SCREENIMAGE
+w_desk = _WIDTH(desktop&)
+h_desk = _HEIGHT(desktop&)
+_SCREENMOVE (w_desk - 406) / 2, (h_desk - 268) / 2
+_TITLE "Lite-Encode pack files  v.1.0.0"
+_ICON _LOADIMAGE("src/icon.png")
+_SCREENHIDE
+DECLARE LIBRARY
+    FUNCTION FindWindow& (BYVAL ClassName AS _OFFSET, WindowName$)
+END DECLARE
+DIM hWnd AS LONG
+_DELAY 1.0
+_SCREENSHOW
+hWnd = FindWindow(0, "Lite-Encode pack files  v.1.0.0" + CHR$(0))
+
+
+
+
+' ДИАЛОГОВОЕ ОКНО ВЫБОРА ПАПОК - ИНИЦИАЛИЗАЦИЯ --------------------------------------------------
+TYPE BROWSEINFO 'typedef struct _browseinfo 'Microsoft MSDN
+    hwndOwner AS LONG '              '  HWND
+    pidlRoot AS _OFFSET '             '  PCIDLIST_ABSOLUTE
+    pszDisplayName AS _OFFSET '      '  LPTSTR
+    lpszTitle AS _OFFSET '           '  LPCTSTR
+    ulFlags AS _UNSIGNED LONG '  UINT
+    lpfn AS _OFFSET '                '  BFFCALLBACK
+    lParam AS _OFFSET '              '  LPARAM
+    iImage AS LONG '                 '  int
+END TYPE 'BROWSEINFO, *PBROWSEINFO, *LPBROWSEINFO;
+DECLARE DYNAMIC LIBRARY "shell32"
+    FUNCTION SHBrowseForFolder%& (x AS BROWSEINFO) 'Microsoft MSDN
+    SUB SHGetPathFromIDList (BYVAL lpItem AS _OFFSET, BYVAL szDir AS _OFFSET) 'Microsoft MSDN
+END DECLARE
+
+
+
+
+' ДИАЛОГОВОЕ ОКНО ВЫБОРА ФАЙЛОВ - ИНИЦИАЛИЗАЦИЯ -------------------------------------------------
+' Флаг-настройки для диалогового окна
+CONST OFN_ALLOWMULTISELECT = &H200 OR &H80000 OR &H200000 '   Разрешает выбирать сразу несколько файлов
+CONST OFN_FILEMUSTEXIST = &H1000& '                           Проверка на наличие файлов
+CONST OFN_NOCHANGEDIR = &H8& '                                Восстанавливает текущий каталог на исходное значение, если пользователь его изменил
+CONST OFN_READONLY = &H1& '                                   Показывает в списке файлы, которые по атрибутам разрешены для чтения
+
+' Создание списка типов, необходимого для корректного отображения диалогового окна обзора файлов
+DEFINT A-Z
+TYPE FILEDIALOGTYPE
+    lStructSize AS LONG
+    hwndOwner AS LONG
+    hInstance AS LONG
+    lpstrFilter AS _OFFSET
+    lpstrCustFilter AS _OFFSET
+    nMaxCustFilter AS LONG
+    nFilterIndex AS LONG
+    lpstrFile AS _OFFSET
+    nMaxFile AS LONG
+    lpstrFileTitle AS _OFFSET
+    nMaxFileTitle AS LONG
+    lpstrInitialDir AS _OFFSET
+    lpstrTitle AS _OFFSET
+    flags AS LONG
+    nFileOffset AS INTEGER
+    nFileExtension AS INTEGER
+    lpstrDefExt AS _OFFSET
+    lCustData AS LONG
+    lpfnHook AS LONG
+    lpTemplateName AS _OFFSET
+END TYPE
+
+' Инициализация необходимых библиотек
+DECLARE DYNAMIC LIBRARY "comdlg32" ' Объявление библиотеки для использования типов _OFFSET
+    FUNCTION GetOpenFileNameA& (DIALOGPARAMS AS FILEDIALOGTYPE) '                         Диалоговое окно открытия файлов
+END DECLARE
+
+' Запуск диалогового окна открытия файлов
+Filter$ = "Source all files (*.*)|*.*" '                                                 Список выбора расширений/форматов файлов для их отображения в диалоговом окне
+Flags& = OFN_ALLOWMULTISELECT + OFN_FILEMUSTEXIST + OFN_NOCHANGEDIR + OFN_READONLY '     Настройка диалогового окна по заданным флаг-настройкам
+hWndFile& = FindWindow(0, "Select lepack-archive:" + CHR$(0)) '                              Получение дискриптора диалогового окна по его заголовку
+
+
+
+
+' ДИАЛОГОВОЕ ОКНО МООБЩЕНИЙ - ИНИЦИАЛИЗАЦИЯ ------------------------------------------------------
+' Флаг-настройки для диалогового окна
+CONST MB_OK& = 0 'OK button only
+CONST MB_OKCANCEL& = 1 'OK & Cancel
+CONST MB_ABORTRETRYIGNORE& = 2 'Abort, Retry & Ignore
+CONST MB_YESNOCANCEL& = 3 'Yes, No & Cancel
+CONST MB_YESNO& = 4 'Yes & No
+CONST MB_RETRYCANCEL& = 5 'Retry & Cancel
+CONST MB_CANCELTRYCONTINUE& = 6 'Cancel, Try Again & Continue
+CONST MB_ICONSTOP& = 16 'Error stop sign icon
+CONST MB_ICONQUESTION& = 32 'Question-mark icon
+CONST MB_ICONEXCLAMATION& = 48 'Exclamation-point icon
+CONST MB_ICONINFORMATION& = 64 'Letter i in a circle icon
+CONST MB_DEFBUTTON1& = 0 '1st button default(left)
+CONST MB_DEFBUTTON2& = 256 '2nd button default
+CONST MB_DEFBUTTON3& = 512 '3rd button default(right)
+CONST MB_APPLMODAL& = 0 'Message box applies to application only
+CONST MB_SYSTEMMODAL& = 4096 'Message box on top of all other windows
+CONST MB_SETFOCUS& = 65536 'Set message box as focus
+CONST IDOK& = 1 'OK button pressed
+CONST IDCANCEL& = 2 'Cancel button pressed
+CONST IDABORT& = 3 'Abort button pressed
+CONST IDRETRY& = 4 'Retry button pressed
+CONST IDIGNORE& = 5 'Ignore button pressed
+CONST IDYES& = 6 'Yes button pressed
+CONST IDNO& = 7 'No button pressed
+CONST IDTRYAGAIN& = 10 'Try again button pressed
+CONST IDCONTINUE& = 1 'Continue button pressed
+DECLARE LIBRARY
+    FUNCTION MessageBox& (BYVAL Zer0 AS LONG, Message AS STRING, Title AS STRING, BYVAL MBType AS _UNSIGNED LONG)
+END DECLARE
+
+
+
+
+
+
+inf& = _LOADIMAGE("src/inf.png")
+load& = _LOADIMAGE("src/load.png")
+screen_s& = _LOADIMAGE("src/screen.png")
+select_toA& = _LOADIMAGE("src/sel-fta.png")
+select_toF& = _LOADIMAGE("src/sel-atf.png")
+txt_info& = _LOADIMAGE("src/txt.png")
+
+i_txt# = 400
+reEx% = 0
+
+main:
+CLS
+to_file$ = ""
+to_folder$ = ""
+_PUTIMAGE (0, 0), screen_s&
+_PUTIMAGE (i_txt#, 223), txt_info&
+_PUTIMAGE (0, 223), inf&
+DO WHILE _MOUSEINPUT
+    XMOUS = _MOUSEX
+    YMOUS = _MOUSEY
+    left_click% = _MOUSEBUTTON(1)
+LOOP
+IF left_click% = 0 THEN reEx% = 0
+
+' mouseshow
+_MOUSESHOW "DEFAULT"
+IF (XMOUS >= 24 AND XMOUS < 376 AND YMOUS >= 85 AND YMOUS < 222) OR (XMOUS >= 222 AND XMOUS < 400 AND YMOUS >= 198 AND YMOUS < 222) THEN _MOUSESHOW "LINK"
+IF XMOUS >= 18 AND XMOUS < 400 AND YMOUS >= 223 AND YMOUS < 240 THEN _MOUSESHOW "TEXT"
+
+' mouseclick
+IF (left_click% <> 0 AND reEx% = 0) AND (XMOUS >= 24 AND XMOUS < 200 AND YMOUS >= 85 AND YMOUS < 222) THEN to_folder$ = open_folder$("Select directory:"): GOTO reClick
+IF (left_click% <> 0 AND reEx% = 0) AND (XMOUS > 200 AND XMOUS < 376 AND YMOUS >= 85 AND YMOUS < 222) THEN OFile% = GetOpenFileName%("Select lepack-archive:", ".\", Filter$, 1, Flags&, hWndFile&): GOTO reClick
+IF (left_click% <> 0) AND (XMOUS >= 222 AND XMOUS < 400 AND YMOUS >= 198 AND YMOUS < 222) THEN SHELL _HIDE "start https://annimon.com/user/gifo_gsoul"
+
+' mousemove
+IF (XMOUS >= 24 AND XMOUS < 200 AND YMOUS >= 85 AND YMOUS < 222) THEN _PUTIMAGE (0, 85), select_toA&
+IF (XMOUS > 200 AND XMOUS < 376 AND YMOUS >= 85 AND YMOUS < 222) THEN _PUTIMAGE (0, 85), select_toF&
+
+post:
+i_txt# = i_txt# - 0.04
+IF (i_txt# <= -1850) THEN i_txt# = 400
+
+IF to_file$ <> "" THEN SHELL _HIDE "start .\utils\decodeLEPack.exe " + CHR$(34) + to_file$ + CHR$(34)
+IF to_folder$ <> "" THEN SHELL _HIDE "start .\utils\encodeLEPack.exe " + CHR$(34) + to_folder$ + CHR$(34)
+IF _EXIT <> 0 THEN exit_programm
+
+_DISPLAY
+GOTO main
+
+
+reClick:
+_SCREENCLICK _SCREENX + 32, _SCREENY + 64
+reEx% = 1
+IF to_file$ <> "" OR to_folder$ <> "" THEN _PUTIMAGE (0, 0), load&
+_DISPLAY
+GOTO post
+
+
+
+
+
+
+
+
+
+FUNCTION open_folder$ (MsgBrowse$)
+SHARED hWnd AS LONG
+DIM b AS BROWSEINFO
+b.hwndOwner = hWnd
+a$ = MsgBrowse$ + CHR$(0)
+b.lpszTitle = _OFFSET(a$)
+DIM o AS _OFFSET
+o = SHBrowseForFolder(b)
+open_folder$ = ""
+IF o THEN
+    DIM s2 AS STRING * 1024
+    SHGetPathFromIDList o, _OFFSET(s2$)
+    open_folder$ = LEFT$(s2$, INSTR(s2$, CHR$(0)) - 1)
+END IF
+END FUNCTION
+
+
+FUNCTION MsgBox& (Title_box$, Message_box$, BoxType&, Icon&, DBtn&, Mode&)
+SELECT CASE Icon&
+    CASE 1: Icon& = MB_ICONSTOP& 'warning X-sign icon
+    CASE 2: Icon& = MB_ICONQUESTION& 'question-mark icon
+    CASE 3: Icon& = MB_ICONEXCLAMATION& 'exclamation-point icon
+    CASE 4: Icon& = MB_ICONINFORMATION& 'lowercase letter i in circle
+    CASE ELSE: Icon& = 0 'no icon
+END SELECT
+IF BoxType& > 0 AND DBtn& > 0 THEN 'set default button as 2nd(256) or 3rd(512)
+    SELECT CASE BoxType&
+        CASE 2, 3, 6
+            IF DBtn& = 2 THEN Icon& = Icon& + MB_DEFBUTTON3& ELSE Icon& = Icon& + MB_DEFBUTTON2& '3 button
+        CASE ELSE: Icon& = Icon& + MB_DEFBUTTON2& '2nd button default
+    END SELECT
+END IF
+Focus& = MB_SETFOCUS&
+MsgBox& = MessageBox&(0, Message_box$ + CHR$(0), Title_box$ + CHR$(0), BoxType& + Icon& + Mode& + Focus&) 'focus on button
+END FUNCTION
+
+
+SUB exit_programm
+msg& = MsgBox&("Exit", "Do you want to exit the program?", 4, 2, 1, 4096)
+IF msg& = 6 THEN
+    _SCREENHIDE
+    END
+END IF
+END SUB
+
+
+' Функция запуска диалогового окна обзора файлов, которая, в процессе выбора файлов возращает 1 и записывает массив наименований выбранных файлов в (file to copy.txt)
+' Функция возвратит -1, если ниодин файл не был выбран
+FUNCTION GetOpenFileName% (Title$, InitialDir$, Filter$, FilterIndex, Flags&, hWndFile&)
+SHARED to_file$
+fFilter$ = Filter$
+FOR R = 1 TO LEN(fFilter$)
+    IF MID$(fFilter$, R, 1) = "|" THEN MID$(fFilter$, R, 1) = CHR$(0)
+NEXT R
+fFilter$ = fFilter$ + CHR$(0)
+
+lpstrFile$ = STRING$(2048, 0) ' Длина возвращаемой строки с выбранными файлами
+lpstrDefExt$ = STRING$(10, 0) ' Длина расширения/формата файла, в пределах которого осуществляется поиск файлов
+
+' Открытие диалогового окна по заданным характеристикам
+DIM OpenCall AS FILEDIALOGTYPE
+OpenCall.lStructSize = LEN(OpenCall)
+OpenCall.hwndOwner = hWndFile&
+OpenCall.lpstrFilter = _OFFSET(fFilter$)
+OpenCall.nFilterIndex = FilterIndex
+OpenCall.lpstrFile = _OFFSET(lpstrFile$)
+OpenCall.nMaxFile = LEN(lpstrFile$) - 1
+OpenCall.lpstrFileTitle = OpenCall.lpstrFile
+OpenCall.nMaxFileTitle = OpenCall.nMaxFile
+OpenCall.lpstrInitialDir = _OFFSET(InitialDir$)
+OpenCall.lpstrTitle = _OFFSET(Title$)
+OpenCall.lpstrDefExt = _OFFSET(lpstrDefExt$)
+OpenCall.flags = Flags&
+
+Result = GetOpenFileNameA&(OpenCall) ' Считывание результата выбора файлов с помощью диалогового окна
+
+' Если результат ненулевой, то составляется массив выбранных файлов в текущей директории и как результат - массив записывается в файл (file to copy.txt)
+' Если результат нулевой, то возвращается значение функции GetOpenFileName% = -1
+GetOpenFileName% = -1
+IF Result THEN ' Trim the remaining zeros
+    post_files% = INSTR(lpstrFile$, CHR$(0))
+    sum_files% = 1
+    REDIM files_path$(1)
+    POLY_FILES% = 0
+    directory_path$ = LEFT$(lpstrFile$, post_files% - 1)
+    IF post_files% + 1 <= LEN(lpstrFile$) AND MID$(lpstrFile$, post_files% + 1, 1) <> CHR$(0) THEN
+        begin_files% = post_files%
+        post_files% = INSTR(post_files% + 1, lpstrFile$, CHR$(0))
+        WHILE post_files% <> 0 AND MID$(lpstrFile$, post_files% + 1, 1) <> CHR$(0)
+            files_path$(sum_files% - 1) = MID$(lpstrFile$, begin_files% + 1, post_files% - begin_files% - 1)
+            sum_files% = sum_files% + 1
+            REDIM _PRESERVE files_path$(0 TO sum_files% - 1)
+            begin_files% = post_files%
+            post_files% = INSTR(post_files% + 1, lpstrFile$, CHR$(0))
+        WEND
+        files_path$(sum_files% - 1) = MID$(lpstrFile$, begin_files% + 1, post_files% - begin_files% - 1)
+        POLY_FILES% = 1
+    END IF
+    IF POLY_FILES% = 0 THEN
+        i_post% = 0
+        WHILE MID$(directory_path$, LEN(directory_path$) - i_post%, 1) <> "\"
+            i_post% = i_post% + 1
+        WEND
+        files_path$(0) = RIGHT$(directory_path$, i_post%)
+        directory_path$ = LEFT$(directory_path$, LEN(directory_path$) - i_post% - 1)
+    END IF
+
+    ' В СЛУЧАЕ - ЕСЛИ ФАЙЛОВ НЕСКОЛЬКО
+    'OPEN "file to copy.txt" FOR OUTPUT AS #1
+    'FOR T = 0 TO sum_files% - 1
+    '    PRINT #1, "copy " + CHR$(34) + directory_path$ + "\" + files_path$(T) + CHR$(34) + " " + CHR$(34) + directory_path$ + "\" + files_path$(T) + CHR$(34)
+    'NEXT T
+    'CLOSE #1
+
+    to_file$ = directory_path$ + "\" + files_path$(0)
+
+    GetOpenFileName% = 1
+    Flags& = OpenCall.flags
+    FilterIndex = OpenCall.nFilterIndex
+END IF
+
+END FUNCTION
